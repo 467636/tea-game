@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>武夷大红袍 · 制茶志</title>
+    <style>
+        :root {
+            --tea-green: #4C7B46;
+            --tea-dark: #2D5A27;
+            --tea-light: #E8F5E9;
+            --paper-bg: #F9F7F2;
+            --text-dim: rgba(45, 90, 39, 0.6);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0; padding: 0;
+            background-color: #e2e8f0;
+            font-family: -apple-system, "Noto Serif SC", serif;
+            overflow: hidden;
+            user-select: none; -webkit-user-select: none;
+        }
+        .app-container {
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .phone-frame {
+            position: relative;
+            width: 100%; height: 100dvh;
+            max-width: calc(100dvh * 750 / 1624);
+            max-height: calc(100vw * 1624 / 750);
+            background-color: var(--paper-bg);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        @media (min-width: 640px) {
+            .phone-frame { border-radius: 40px; border: 8px solid rgba(0,0,0,0.05); }
+        }
+        .header { padding: 20px 20px 10px; text-align: center; flex-shrink: 0; }
+        .game-title { 
+            font-size: 22px; font-weight: 700; color: var(--tea-dark); 
+            letter-spacing: 4px; margin: 0; 
+        }
+        .progress-dots { 
+            display: flex; justify-content: center; gap: 8px; margin-top: 12px; 
+        }
+        .dot { width: 24px; height: 4px; border-radius: 2px; background: var(--tea-light); transition: 0.3s; }
+        .dot.active { background: var(--tea-green); width: 32px; }
+        .stage { flex: 1; position: relative; overflow: hidden; }
+        .phase { 
+            position: absolute; inset: 0; padding: 20px;
+            display: flex; flex-direction: column;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .phase.active { opacity: 1; pointer-events: auto; }
+        .card {
+            background: white; border-radius: 32px; flex: 1;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            display: flex; flex-direction: column; padding: 20px;
+            position: relative;
+        }
+        .step-label { 
+            display: inline-block; background: var(--tea-light); color: var(--tea-green);
+            font-size: 10px; font-weight: 700; padding: 4px 12px;
+            border-radius: 20px; margin-bottom: 8px;
+        }
+        .step-tip { font-size: 12px; color: var(--text-dim); margin: 0 0 15px; }
+        .menu-content { 
+            height: 100%; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; text-align: center;
+        }
+        .menu-hero {
+            width: 180px; height: 180px; background: rgba(76, 123, 70, 0.08);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 40px; position: relative;
+        }
+        .menu-hero::after {
+            content: ""; position: absolute; inset: 0;
+            border: 2px dashed rgba(76, 123, 70, 0.2); border-radius: 50%;
+            animation: spin 20s linear infinite;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .btn-main {
+            background: var(--tea-green); color: white; border: none;
+            padding: 18px 50px; border-radius: 20px; font-size: 18px;
+            font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(76, 123, 70, 0.3);
+            transition: 0.2s;
+        }
+        .btn-main:active { transform: scale(0.95); }
+        .interaction-area { 
+            flex: 1; background: rgba(0,0,0,0.02); border-radius: 24px;
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .target-circle {
+            width: 140px; height: 70px; border: 2px dashed rgba(76, 123, 70, 0.3);
+            border-radius: 50%; background: rgba(76, 123, 70, 0.05);
+        }
+        .drag-item {
+            position: absolute; width: 80px; height: 80px; background: white;
+            border-radius: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--tea-green); cursor: move; touch-action: none;
+            z-index: 100;
+        }
+        .basket {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 180px; height: 70px; background: rgba(120, 60, 0, 0.1);
+            border: 2px solid rgba(120, 60, 0, 0.2); border-radius: 0 0 40px 40px;
+        }
+        .leaf {
+            position: absolute; width: 50px; height: 50px; background: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: move; touch-action: none;
+        }
+        .temp-display { font-size: 40px; font-weight: 700; color: #94a3b8; margin: 20px 0; }
+        .temp-ok { color: var(--tea-green) !important; }
+        input[type=range] {
+            width: 100%; height: 8px; background: #eee; border-radius: 10px;
+            appearance: none; outline: none; margin: 30px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none; width: 24px; height: 24px; background: var(--tea-green);
+            border-radius: 50%; cursor: pointer; border: 4px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .nav {
+            height: 80px; background: white; border-top: 1px solid #eee;
+            display: flex; align-items: center; justify-content: space-around; flex-shrink: 0;
+        }
+        .nav-item { 
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: #ccc; font-size: 10px; font-weight: 700; flex: 1;
+        }
+        .nav-item.active { color: var(--tea-green); }
+        .nav-icon { 
+            width: 40px; height: 40px; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center; transition: 0.3s;
+        }
+        .nav-item.active .nav-icon { background: rgba(76, 123, 70, 0.1); }
+        .complete-img {
+            width: 160px; height: 160px; border-radius: 50%; border: 5px solid white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); object-fit: cover;
+        }
+        .hidden { display: none !important; }
+        
+        /* 核心矢量叶片：写实茶叶 🌿 */
+        .svg-leaf {
+            fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="phone-frame">
+            <header class="header">
+                <h1 class="game-title">武夷大红袍 · 制茶志</h1>
+                <div class="progress-dots">
+                    <div id="dot-1" class="dot"></div>
+                    <div id="dot-2" class="dot"></div>
+                    <div id="dot-3" class="dot"></div>
+                </div>
+            </header>
+
+            <main class="stage">
+                <!-- 首页 -->
+                <div id="phase-menu" class="phase active">
+                    <div class="menu-content">
+                        <div class="menu-hero">
+                            <svg class="svg-leaf" width="80" height="80" style="color: var(--tea-green)" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-10 10Z"/><path d="M17 11c.3 4.9-5.7 6.1-5.7 6.1"/></svg>
+                        </div>
+                        <h2 style="font-size: 32px; color: var(--tea-dark); margin: 0 0 10px;">匠心大红袍</h2>
+                        <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6; padding: 0 20px;">
+                            大红袍系武夷名丛之首，产于福建武夷山。<br>快来体验从种植到烘焙的阶梯工序。
+                        </p>
+                        <div style="margin-top: 50px;">
+                            <button class="btn-main" onclick="goPhase('planting')">开始探索</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 种植页 -->
+                <div id="phase-planting" class="phase">
+                    <span class="step-label">移栽幼苗</span>
+                    <p class="step-tip">请通过拖拽将底部的茶芽幼苗移栽至核心产区。</p>
+                    <div class="card">
+                        <div style="text-align: center; font-weight: 700; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid #f2f2f2; margin-bottom: 20px;">第一步：岩间潜龙</div>
+                        <div class="interaction-area" id="planting-box">
+                            <div class="target-circle" id="p-target"></div>
+                            <div id="p-success" class="hidden" style="text-align: center;">
+                                <svg class="svg-leaf" width="100" height="100" style="color: var(--tea-green)" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-10 10Z"/><path d="M17 11c.3 4.9-5.7 6.1-5.7 6.1"/></svg>
+                                <button class="btn-main" style="margin-top: 30px; font-size: 14px; padding: 12px 30px;" onclick="goPhase('picking')">已扎根，前往采摘</button>
+                            </div>
+                            <div id="sprout" class="drag-item" style="bottom: 20px; left: 50%; margin-left: -40px;">
+                                <svg class="svg-leaf" width="50" height="50" style="color: var(--tea-green)" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-10 10Z"/><path d="M17 11c.3 4.9-5.7 6.1-5.7 6.1"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 采摘页 -->
+                <div id="phase-picking" class="phase">
+                    <span class="step-label">精品采摘</span>
+                    <p class="step-tip">请逐一采下嫩绿茶芽放入采集篮中。</p>
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid #f2f2f2; margin-bottom: 20px;">
+                            <span>第二步：春茶撷秀</span>
+                            <span style="color: var(--tea-green)" id="pick-text">0 / 5</span>
+                        </div>
+                        <div class="interaction-area" id="picking-box">
+                            <div id="leaves-container"></div>
+                            <div class="basket"></div>
+                        </div>
+                        <button id="btn-next-step" class="btn-main hidden" style="margin-top: 20px; font-size: 14px; width: 100%;" onclick="goPhase('roasting')">采摘完成，开始烘制</button>
+                    </div>
+                </div>
+
+                <!-- 烘焙页 -->
+                <div id="phase-roasting" class="phase">
+                    <span class="step-label">炭火慢焙</span>
+                    <p class="step-tip">请滑动调节火候，呈现完美岩韵。</p>
+                    <div class="card">
+                        <div style="text-align: center; font-weight: 700; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid #f2f2f2; margin-bottom: 20px;">第三步：文火慢焙</div>
+                        <div class="interaction-area" style="flex-direction: column;">
+                            <div id="fire-emoji" style="font-size: 50px; opacity: 0.3;">🔥</div>
+                            <div id="temp-val" class="temp-display">100°C</div>
+                            <div id="temp-tip" style="font-size: 10px; font-weight: 700; color: #94a3b8;">调整火候中</div>
+                        </div>
+                        <div style="padding: 20px 10px;">
+                            <input type="range" id="temp-slider" min="50" max="400" value="100">
+                            <button id="btn-roast-done" class="btn-main" style="width: 100%; font-size: 14px; background: #f0f0f0; color: #ccc;" disabled onclick="goPhase('complete')">确认出炉</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完成页 -->
+                <div id="phase-complete" class="phase">
+                    <div class="menu-content">
+                        <div style="position: relative; margin-bottom: 40px;">
+                            <div style="position: absolute; inset: -20px; border: 2px dashed var(--tea-light); border-radius: 50%; animation: spin 20s linear infinite;"></div>
+                            <img src="https://picsum.photos/seed/tea_leaves_dry/400/400" class="complete-img">
+                        </div>
+                        <h2 style="font-size: 28px; color: var(--tea-dark); margin: 0 0 10px;">制茶圆满</h2>
+                        <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">茶香回甘，岩韵悠长。<br>为您送上一杯最地道的大红袍。</p>
+                        <button style="margin-top: 40px; background: none; border: none; color: var(--tea-green); font-weight: 700; border-bottom: 1px solid var(--tea-light); cursor: pointer;" onclick="location.reload()">再次重温</button>
+                    </div>
+                </div>
+            </main>
+
+            <nav class="nav">
+                <div class="nav-item active" id="n-1"><div class="nav-icon"><svg class="svg-leaf" width="20" height="20" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>茶园</div>
+                <div class="nav-item" id="n-2"><div class="nav-icon"><svg class="svg-leaf" width="20" height="20" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-10 10Z"/><path d="M17 11c.3 4.9-5.7 6.1-5.7 6.1"/></svg></div>采摘</div>
+                <div class="nav-item" id="n-3"><div class="nav-icon"><svg class="svg-leaf" width="20" height="20" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>产制</div>
+                <div class="nav-item" id="n-4"><div class="nav-icon"><svg class="svg-leaf" width="20" height="20" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>我的</div>
+            </nav>
+        </div>
+    </div>
+
+    <script>
+        const state = { current: 'menu', picked: 0 };
+        function sfx(f, d=0.1) {
+            try {
+                const c = new (window.AudioContext || window.webkitAudioContext)();
+                const o = c.createOscillator(); const g = c.createGain();
+                o.frequency.value = f; g.gain.setValueAtTime(0.1, c.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d);
+                o.connect(g); g.connect(c.destination);
+                o.start(); o.stop(c.currentTime + d);
+            } catch(e){}
+        }
+
+        function goPhase(id) {
+            sfx(600, 0.05);
+            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+            document.getElementById('phase-' + id).classList.add('active');
+            document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if(id === 'planting') { document.getElementById('dot-1').classList.add('active'); document.getElementById('n-2').classList.add('active'); }
+            else if(id === 'picking') { document.getElementById('dot-2').classList.add('active'); document.getElementById('n-3').classList.add('active'); initPicking(); }
+            else if(id === 'roasting') { document.getElementById('dot-3').classList.add('active'); document.getElementById('n-3').classList.add('active'); }
+            else if(id === 'complete') { document.getElementById('dot-3').classList.add('active'); document.getElementById('n-4').classList.add('active'); sfx(800, 0.2); }
+            else { document.getElementById('n-1').classList.add('active'); }
+        }
+
+        const sprout = document.getElementById('sprout');
+        const pBox = document.getElementById('planting-box');
+        let drag = false;
+        function attach(el, zone, onSucess) {
+            let sx, sy, ox, oy;
+            el.onpointerdown = e => { drag = true; sx = e.clientX; sy = e.clientY; ox = el.offsetLeft; oy = el.offsetTop; el.setPointerCapture(e.pointerId); };
+            el.onpointermove = e => { if(!drag) return; el.style.left = (ox + e.clientX - sx) + 'px'; el.style.top = (oy + e.clientY - sy) + 'px'; };
+            el.onpointerup = e => {
+                if(!drag) return; drag = false;
+                const rect = zone.getBoundingClientRect();
+                if(e.clientY < rect.top + rect.height * 0.6) { onSucess(); }
+                else { el.style.left = '50%'; el.style.marginLeft = '-40px'; el.style.top = ''; el.style.bottom = '20px'; }
+            };
+        }
+        attach(sprout, pBox, () => {
+            sfx(400, 0.1); sprout.classList.add('hidden'); 
+            document.getElementById('p-target').classList.add('hidden');
+            document.getElementById('p-success').classList.remove('hidden');
+        });
+
+        function initPicking() {
+            const container = document.getElementById('leaves-container');
+            if(container.children.length > 0) return;
+            const pos = [[20,20], [70,18], [45,35], [15,50], [68,45]];
+            pos.forEach((p, i) => {
+                const l = document.createElement('div');
+                l.className = 'leaf'; l.style.left = p[0] + '%'; l.style.top = p[1] + '%';
+                l.innerHTML = `<svg class="svg-leaf" width="34" height="34" style="color: var(--tea-green)" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a8 8 0 0 1-10 10Z"/><path d="M17 11c.3 4.9-5.7 6.1-5.7 6.1"/></svg>`;
+                container.appendChild(l);
+                let ld = false, lsx, lsy, lox, loy;
+                l.onpointerdown = e => { ld = true; lsx = e.clientX; lsy = e.clientY; lox = l.offsetLeft; loy = l.offsetTop; l.setPointerCapture(e.pointerId); l.style.zIndex = 1000; };
+                l.onpointermove = e => { if(ld) { l.style.left = (lox + e.clientX - lsx) + 'px'; l.style.top = (loy + e.clientY - lsy) + 'px'; } };
+                l.onpointerup = e => {
+                    if(!ld) return; ld = false;
+                    const rect = document.getElementById('picking-box').getBoundingClientRect();
+                    if(e.clientY > rect.top + rect.height * 0.45) {
+                        sfx(300, 0.1); l.remove(); state.picked++;
+                        document.getElementById('pick-text').innerText = state.picked + ' / 5';
+                        if(state.picked === 5) document.getElementById('btn-next-step').classList.remove('hidden');
+                    } else { l.style.left = p[0] + '%'; l.style.top = p[1] + '%'; l.style.zIndex = 10; }
+                };
+            });
+        }
+
+        const slider = document.getElementById('temp-slider');
+        slider.oninput = () => {
+            const v = slider.value; const display = document.getElementById('temp-val');
+            display.innerText = v + '°C';
+            const ok = Math.abs(v - 220) < 15;
+            if(ok) {
+                display.classList.add('temp-ok');
+                document.getElementById('temp-tip').innerText = '最佳温度范围内';
+                document.getElementById('temp-tip').style.color = 'var(--tea-green)';
+                document.getElementById('fire-emoji').style.opacity = '1';
+                document.getElementById('btn-roast-done').disabled = false;
+                document.getElementById('btn-roast-done').style.background = 'var(--tea-green)';
+                document.getElementById('btn-roast-done').style.color = 'white';
+            } else {
+                display.classList.remove('temp-ok');
+                document.getElementById('temp-tip').innerText = '调整火候中';
+                document.getElementById('temp-tip').style.color = '#94a3b8';
+                document.getElementById('fire-emoji').style.opacity = '0.3';
+                document.getElementById('btn-roast-done').disabled = true;
+                document.getElementById('btn-roast-done').style.background = '#f0f0f0';
+                document.getElementById('btn-roast-done').style.color = '#ccc';
+            }
+        };
+    </script>
+</body>
+</html>
